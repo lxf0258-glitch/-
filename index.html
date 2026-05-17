@@ -1,1 +1,513 @@
-<!DOCTYPE html><html><body><h1>占位中，稍后替换</h1></body></html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>考勤与成绩管理</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#F5F2EB;--bg-alt:#EFEBE2;--surface:#FFFFFF;--surface-2:#FBFAF6;--border:#E3DFD4;--border-strong:#CFC9BA;--text:#171513;--text-muted:#6E665B;--text-faint:#A39C90;--accent:#1A2332;--accent-2:#2D3A50;--accent-soft:rgba(26,35,50,.06);--gold:#B8923D;--gold-2:#D4AB52;--gold-soft:rgba(184,146,61,.12);--success:#5A7A4A;--success-2:#6F9258;--success-soft:rgba(90,122,74,.12);--warning:#C68F2C;--warning-2:#DCA640;--warning-soft:rgba(198,143,44,.14);--danger:#9B4646;--danger-2:#B05858;--danger-soft:rgba(155,70,70,.10);--info:#4A6585;--info-2:#5E7B9D;--info-soft:rgba(74,101,133,.12);--hover:#EFEBE2;--shadow-sm:0 1px 2px rgba(20,15,10,.04),0 1px 1px rgba(20,15,10,.02);--shadow-md:0 4px 14px rgba(20,15,10,.06),0 1px 3px rgba(20,15,10,.04);--shadow-lg:0 12px 32px rgba(20,15,10,.10),0 4px 12px rgba(20,15,10,.06);--radius:8px;--radius-lg:14px;--radius-xl:18px;--transition:.18s cubic-bezier(.4,0,.2,1)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans","Microsoft YaHei",sans-serif;background:var(--bg);background-image:radial-gradient(ellipse at 0% 0%,rgba(184,146,61,.05) 0%,transparent 45%),radial-gradient(ellipse at 100% 100%,rgba(74,101,133,.05) 0%,transparent 45%);background-attachment:fixed;color:var(--text);line-height:1.6;font-size:14px;padding-bottom:60px;letter-spacing:.01em}
+header{background:linear-gradient(180deg,#FFFFFF 0%,#FBFAF6 100%);border-bottom:1px solid var(--border);padding:16px 24px;position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:var(--shadow-sm)}
+.brand{display:flex;align-items:center;gap:12px;font-size:16px;font-weight:600;letter-spacing:.02em}
+.brand::before{content:"";display:inline-block;width:5px;height:22px;background:linear-gradient(180deg,var(--gold-2) 0%,var(--gold) 50%,var(--accent) 100%);border-radius:2px;box-shadow:0 0 8px rgba(184,146,61,.30)}
+.brand .sub{font-weight:400;color:var(--text-muted);font-size:12px;margin-left:4px;letter-spacing:.04em}
+.group-switch{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.group-switch select{padding:8px 14px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--surface);font-size:13px;max-width:300px;font-family:inherit;color:var(--text);cursor:pointer;transition:all var(--transition)}
+.group-switch select:hover{border-color:var(--accent)}
+.group-switch select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.save-indicator{font-size:11px;color:var(--text-faint);letter-spacing:.06em;text-transform:uppercase;display:inline-flex;align-items:center;gap:7px;font-weight:500}
+.save-indicator::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--text-faint);transition:all var(--transition)}
+.save-indicator.saved{color:var(--success)}
+.save-indicator.saved::before{background:var(--success);box-shadow:0 0 0 3px var(--success-soft)}
+nav.tabs{display:flex;gap:2px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;padding:0 16px;position:sticky;top:64px;z-index:40;scrollbar-width:thin}
+nav.tabs button{background:none;border:0;padding:14px 18px;font-size:13px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit;font-weight:500;letter-spacing:.02em;transition:all var(--transition);position:relative}
+nav.tabs button:hover{color:var(--text)}
+nav.tabs button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+nav.tabs button.active::after{content:"";position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);width:28px;height:2px;background:var(--gold);border-radius:1px;box-shadow:0 0 6px rgba(184,146,61,.40)}
+main{max-width:1200px;margin:24px auto;padding:0 20px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px 24px;margin-bottom:18px;box-shadow:var(--shadow-sm);transition:box-shadow var(--transition)}
+.panel:hover{box-shadow:var(--shadow-md)}
+.panel-header{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:18px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.panel-title{font-size:17px;font-weight:600;letter-spacing:.01em;display:flex;align-items:center;gap:10px}
+.panel-title::before{content:"";display:inline-block;width:3px;height:18px;background:linear-gradient(180deg,var(--gold-2) 0%,var(--gold) 100%);border-radius:2px}
+.panel-subtitle{color:var(--text-muted);font-size:12px;margin-top:6px;margin-left:13px;letter-spacing:.02em;line-height:1.6}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:8px 16px;border-radius:var(--radius);border:1px solid var(--border-strong);background:var(--surface);color:var(--text);cursor:pointer;font-size:13px;font-family:inherit;font-weight:500;min-height:34px;display:inline-flex;align-items:center;gap:6px;transition:all var(--transition);letter-spacing:.01em}
+.btn:hover{background:var(--hover);border-color:var(--accent);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn.primary{background:linear-gradient(180deg,var(--accent-2),var(--accent));color:#fff;border-color:var(--accent);box-shadow:0 1px 2px rgba(26,35,50,.22),inset 0 1px 0 rgba(255,255,255,.10)}
+.btn.primary:hover{background:linear-gradient(180deg,#3A4860,#243047);box-shadow:0 4px 12px rgba(26,35,50,.22),inset 0 1px 0 rgba(255,255,255,.12)}
+.btn.gold{background:linear-gradient(180deg,var(--gold-2),var(--gold));color:#fff;border-color:var(--gold);box-shadow:0 1px 2px rgba(184,146,61,.28),inset 0 1px 0 rgba(255,255,255,.15)}
+.btn.gold:hover{filter:brightness(1.05);box-shadow:0 4px 12px rgba(184,146,61,.28)}
+.btn.danger{background:var(--surface);color:var(--danger);border-color:rgba(155,70,70,.30)}
+.btn.danger:hover{background:var(--danger-soft);border-color:var(--danger)}
+.btn.sm{padding:5px 12px;font-size:12px;min-height:28px}
+.btn[disabled]{opacity:.4;cursor:not-allowed;pointer-events:none}
+.empty{text-align:center;padding:60px 24px;color:var(--text-muted)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.chip{padding:6px 14px;border-radius:99px;border:1px solid var(--border-strong);background:var(--surface);cursor:pointer;font-size:12px;color:var(--text-muted);font-family:inherit;font-weight:500;transition:all var(--transition);letter-spacing:.02em}
+.chip:hover{background:var(--hover);color:var(--text);border-color:var(--accent)}
+.chip.active{background:linear-gradient(180deg,var(--accent-2),var(--accent));color:#fff;border-color:var(--accent);box-shadow:0 2px 6px rgba(26,35,50,.18)}
+.session-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px;margin-bottom:14px}
+.session-btn{padding:10px 8px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface-2);cursor:pointer;font-size:12px;text-align:center;font-family:inherit;transition:all var(--transition)}
+.session-btn:hover{background:var(--surface);border-color:var(--accent);transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.session-btn.active{background:linear-gradient(180deg,var(--accent-2),var(--accent));color:#fff;border-color:var(--accent);box-shadow:0 4px 10px rgba(26,35,50,.22)}
+.session-btn .num{font-weight:600;font-size:15px}
+.session-btn .sub{color:var(--text-muted);font-size:11px;margin-top:3px;letter-spacing:.04em}
+.session-btn.active .sub{color:rgba(255,255,255,.78)}
+.student-list{display:flex;flex-direction:column;gap:8px}
+.student-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);flex-wrap:wrap;transition:all var(--transition)}
+.student-row:hover{background:var(--surface);border-color:var(--border-strong);box-shadow:var(--shadow-sm)}
+.student-row .idx{color:var(--text-faint);font-size:11px;min-width:28px;font-variant-numeric:tabular-nums;letter-spacing:.05em;font-weight:500}
+.student-row .info{flex:1;min-width:140px}
+.student-row .name{font-weight:600;color:var(--text);letter-spacing:.01em}
+.student-row .sub{color:var(--text-muted);font-size:11px;margin-top:2px;letter-spacing:.02em}
+.student-row .actions{display:flex;gap:5px;flex-wrap:wrap}
+.status-btn{padding:6px 12px;font-size:12px;border-radius:6px;border:1px solid var(--border-strong);background:var(--surface);min-height:32px;cursor:pointer;font-family:inherit;font-weight:500;transition:all var(--transition)}
+.status-btn:hover{background:var(--hover);border-color:var(--accent)}
+.status-btn.active{color:#fff;border-color:transparent;box-shadow:0 2px 6px rgba(0,0,0,.10)}
+.status-btn.active.present{background:linear-gradient(180deg,var(--success-2),var(--success));box-shadow:0 2px 6px rgba(90,122,74,.32)}
+.status-btn.active.late{background:linear-gradient(180deg,var(--warning-2),var(--warning));box-shadow:0 2px 6px rgba(198,143,44,.32)}
+.status-btn.active.leave{background:linear-gradient(180deg,var(--info-2),var(--info));box-shadow:0 2px 6px rgba(74,101,133,.32)}
+.status-btn.active.absent{background:linear-gradient(180deg,var(--danger-2),var(--danger));box-shadow:0 2px 6px rgba(155,70,70,.32)}
+.status-btn.sm-undo{padding:6px 9px;color:var(--text-faint);font-size:14px;line-height:1;min-width:32px;font-weight:400}
+.status-btn.sm-undo:hover{color:var(--danger);border-color:var(--danger);background:var(--danger-soft)}
+.bulk-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 14px;background:linear-gradient(180deg,var(--bg-alt),var(--surface-2));border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px}
+.table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--border)}
+tbody tr:last-child td{border-bottom:none}
+th{background:linear-gradient(180deg,var(--bg-alt),var(--surface-2));font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;border-bottom:1px solid var(--border-strong)}
+tbody tr{transition:background var(--transition)}
+tbody tr:hover{background:var(--surface-2)}
+td.num{font-variant-numeric:tabular-nums;text-align:right}
+td.muted{color:var(--text-muted)}
+.tag{display:inline-block;padding:3px 10px;border-radius:99px;background:var(--info-soft);border:1px solid rgba(74,101,133,.22);font-size:11px;color:var(--info);font-weight:500;letter-spacing:.02em}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
+.stat-card{background:linear-gradient(135deg,var(--surface),var(--surface-2));border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;position:relative;overflow:hidden;transition:all var(--transition)}
+.stat-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),var(--gold-2) 50%,transparent)}
+.stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.stat-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.10em;font-weight:600}
+.stat-value{font-size:26px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums;letter-spacing:-.01em;color:var(--accent)}
+.chart-wrap{height:260px;margin-bottom:12px;padding:14px 8px 8px;background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border);border-radius:var(--radius)}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--border) 20%,var(--border) 80%,transparent);margin:20px 0}
+.hint{padding:12px 16px;background:linear-gradient(135deg,var(--info-soft),transparent);border:1px solid rgba(74,101,133,.18);border-left:3px solid var(--info);border-radius:var(--radius);color:var(--text-muted);font-size:12px;line-height:1.7}
+.hint strong{color:var(--text)}
+.hint code{padding:1px 6px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-size:11px;color:var(--accent)}
+.modal-bg{position:fixed;inset:0;background:rgba(20,15,10,.45);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-xl);padding:24px 26px;max-width:540px;width:100%;max-height:90vh;overflow:auto;box-shadow:var(--shadow-lg);animation:slideUp .25s cubic-bezier(.4,0,.2,1)}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.modal h2{font-size:18px;font-weight:600;letter-spacing:.01em;padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--surface);color:var(--text);transition:all var(--transition)}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.field textarea{min-height:70px;resize:vertical}
+.muted{color:var(--text-muted)}
+.text-sm{font-size:12px}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:linear-gradient(180deg,var(--accent-2),var(--accent));color:#fff;padding:10px 20px;border-radius:99px;font-size:13px;z-index:200;opacity:0;box-shadow:0 8px 24px rgba(20,15,10,.22),inset 0 1px 0 rgba(255,255,255,.10);transition:all .25s;font-weight:500;letter-spacing:.02em}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.cg-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--border);border-radius:var(--radius);background:linear-gradient(135deg,var(--surface),var(--surface-2));margin-bottom:8px;flex-wrap:wrap;transition:all var(--transition)}
+.cg-row:hover{border-color:var(--border-strong);box-shadow:var(--shadow-sm);transform:translateX(2px)}
+.cg-row .info{flex:1;min-width:200px}
+.cg-row .name{font-weight:600;color:var(--text);letter-spacing:.01em}
+.cg-row .meta{color:var(--text-muted);font-size:12px;margin-top:4px;letter-spacing:.02em}
+.legacy-banner{background:linear-gradient(135deg,var(--gold-soft),transparent 80%);border:1px solid rgba(184,146,61,.30);border-left:3px solid var(--gold);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.legacy-banner .text{flex:1;min-width:200px;font-size:13px;color:var(--text);line-height:1.6}
+.legacy-banner .text strong{color:var(--gold)}
+.search-bar{display:flex;gap:10px;align-items:center;margin-bottom:14px}
+.search-bar input{flex:1;padding:10px 16px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--surface);font-size:13px;font-family:inherit;color:var(--text);transition:all var(--transition);letter-spacing:.02em}
+.search-bar input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.mini-sel{padding:5px 8px;border:1px solid var(--border-strong);border-radius:5px;font-family:inherit;font-size:12px;background:var(--surface);min-width:84px;color:var(--text);cursor:pointer;transition:all var(--transition)}
+.mini-num{width:62px;padding:5px 6px;border:1px solid var(--border-strong);border-radius:5px;font-family:inherit;font-size:12px;text-align:center;font-variant-numeric:tabular-nums;background:var(--surface);color:var(--text);transition:all var(--transition)}
+.mini-sel:hover,.mini-num:hover{border-color:var(--accent)}
+.mini-sel:focus,.mini-num:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.edit-modal table th,.edit-modal table td{padding:7px 10px;font-size:12px}
+@media (max-width:640px){header{flex-direction:column;align-items:flex-start;padding:14px 16px}nav.tabs{top:auto;position:relative}main{padding:0 14px;margin:16px auto}.panel{padding:16px}.btn{font-size:12px;padding:7px 12px}.session-grid{grid-template-columns:repeat(auto-fill,minmax(68px,1fr))}.panel-title{font-size:15px}.stat-value{font-size:22px}}
+</style>
+</head>
+<body>
+<header>
+	<div>
+		<div class="brand">考勤与成绩管理 <span class="sub" id="current-group-label"></span></div>
+	</div>
+	<div class="group-switch">
+		<select id="group-select" onchange="switchGroup(this.value)"></select>
+		<span class="save-indicator" id="save-indicator">未保存</span>
+	</div>
+</header>
+<nav class="tabs" id="tab-bar"></nav>
+<main id="main"></main>
+<div id="modal-root"></div>
+<div class="toast" id="toast"></div>
+<script>
+const ATT_WEIGHTS={present:1,leave:0.8,late:0.5,absent:0};
+const DEFAULT_SETTINGS={attendanceMax:20,finalRatio:0.8,totalCap:100};
+const STORAGE_KEY='attendance_grading_general_v1';
+const LEGACY_STORAGE_KEY='attendance_grading_v1';
+const TABS=[{id:'setup',name:'课程设置'},{id:'attendance',name:'考勤登记'},{id:'record',name:'课堂记录'},{id:'final',name:'期末成绩'},{id:'summary',name:'总分汇总'},{id:'students',name:'学生管理'},{id:'backup',name:'数据备份'}];
+let state={schemaVersion:1,courseGroups:[],groups:{},currentGroupId:null,currentTab:'setup',currentSessionIdx:0,summaryFilterClass:'all',settings:{...DEFAULT_SETTINGS},lastSaved:null,lastBackup:null};
+let summaryFilterClass='all';
+let studentSearch='';
+let currentSessionIdx=0;
+let chartInstance=null;
+
+function loadState(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return;const parsed=JSON.parse(raw);state={...state,...parsed,settings:{...DEFAULT_SETTINGS,...(parsed.settings||{})}};if(typeof parsed.summaryFilterClass==='string')summaryFilterClass=parsed.summaryFilterClass;if(typeof parsed.currentSessionIdx==='number')currentSessionIdx=parsed.currentSessionIdx;migrateHasHomework();}catch(e){console.error(e)}}
+function migrateHasHomework(){for(const gid in state.groups){const g=state.groups[gid];if(!g||!Array.isArray(g.sessions))continue;for(const s of g.sessions){if(typeof s.hasHomework==='boolean')continue;const hasAny=Object.values(s.records||{}).some(r=>r&&(r.homework==='submitted'||r.homework==='missing'));s.hasHomework=hasAny}}}
+function saveState(){state.lastSaved=new Date().toISOString();state.summaryFilterClass=summaryFilterClass;state.currentSessionIdx=currentSessionIdx;try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));updateSaveIndicator(true)}catch(e){toast('保存失败：'+e.message)}}
+function updateSaveIndicator(saved){const el=document.getElementById('save-indicator');if(!el)return;if(saved){el.textContent='已保存 '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});el.classList.add('saved')}else{el.textContent='未保存';el.classList.remove('saved')}}
+
+function ensureGroupContainer(gid,spg){if(!state.groups[gid]){state.groups[gid]={students:[],sessions:Array.from({length:spg},(_,i)=>({num:i+1,records:{},hasHomework:false})),finals:{}}}}
+function currentGroupMeta(){return state.courseGroups.find(g=>g.id===state.currentGroupId)}
+function currentGroup(){return state.groups[state.currentGroupId]}
+function currentSession(){const g=currentGroup();if(!g)return null;if(currentSessionIdx>=g.sessions.length)currentSessionIdx=0;return g.sessions[currentSessionIdx]}
+
+function renderHeader(){const sel=document.getElementById('group-select');const lbl=document.getElementById('current-group-label');if(!state.courseGroups.length){sel.innerHTML='<option value="">尚未创建教学班</option>';sel.disabled=true;lbl.textContent='';return}sel.disabled=false;sel.innerHTML=state.courseGroups.map(g=>`<option value="${g.id}" ${g.id===state.currentGroupId?'selected':''}>${escapeHtml(g.course)} · ${escapeHtml(g.label)}</option>`).join('');const m=currentGroupMeta();lbl.textContent=m?'· '+m.course+' · '+m.label:'';}
+function renderTabs(){const bar=document.getElementById('tab-bar');bar.innerHTML=TABS.map(t=>`<button onclick="switchTab('${t.id}')" class="${state.currentTab===t.id?'active':''}">${t.name}</button>`).join('')}
+function switchTab(id){state.currentTab=id;saveState();renderMain()}
+function switchGroup(id){if(!id)return;state.currentGroupId=id;currentSessionIdx=0;saveState();renderHeader();renderMain()}
+
+function renderMain(){renderHeader();renderTabs();const main=document.getElementById('main');if(state.currentTab==='setup')return renderSetup();if(!state.courseGroups.length){main.innerHTML=`<div class="panel"><div class="empty">还没创建教学班<br><span class="text-sm">请先去【课程设置】添加你的第一个教学班</span><div style="margin-top:16px"><button class="btn primary" onclick="switchTab('setup')">去课程设置</button></div></div></div>`;return}if(!state.currentGroupId)state.currentGroupId=state.courseGroups[0].id;ensureGroupContainer(state.currentGroupId,currentGroupMeta().sessionsPerGroup);switch(state.currentTab){case 'attendance':return renderAttendance();case 'record':return renderRecord();case 'final':return renderFinal();case 'summary':return renderSummary();case 'students':return renderStudents();case 'backup':return renderBackup()}}
+
+// ====== 课程设置 ======
+function renderSetup(){const main=document.getElementById('main');const legacyAvail=hasLegacyData()&&!state.courseGroups.length;let html=legacyAvail?`<div class="legacy-banner"><div class="text">检测到本浏览器中保存有 <strong>上一版工具</strong> 的数据，可一键迁移过来（两版备份格式互通）。</div><button class="btn gold" onclick="importLegacyFromBrowser()">↩ 从上一版导入</button></div>`:'';html+=`<div class="panel"><div class="panel-header"><div><div class="panel-title">课程设置</div><div class="panel-subtitle">管理你的教学班：一门课的一个班次 = 一个教学班</div></div><div class="btn-group"><button class="btn primary" onclick="courseGroupModal()">+ 新建教学班</button></div></div>`;if(!state.courseGroups.length){html+=`<div class="empty">还没有教学班<br><span class="text-sm">点击右上角【新建教学班】开始</span><div class="hint" style="text-align:left;margin-top:20px;max-width:520px;margin-left:auto;margin-right:auto"><strong>例子：</strong>「中外舞蹈鉴赏 · 周一1-2节」，行政班填「舞蹈学2401, 表演2402」（来自两个行政班的学生选了同一节课），学期总课次 16 次。</div></div>`}else{html+=`<div style="margin-bottom:12px">`;state.courseGroups.forEach(cg=>{const g=state.groups[cg.id];const n=g?g.students.length:0;html+=`<div class="cg-row"><div class="info"><div class="name">${escapeHtml(cg.course)} · ${escapeHtml(cg.label)}</div><div class="meta">行政班：${cg.adminClasses.map(escapeHtml).join(' / ')||'未设置'} · 总课次 ${cg.sessionsPerGroup} · 已录入 ${n} 人${cg.capacity?' / 应选 '+cg.capacity:''}</div></div><div class="btn-group"><button class="btn sm" onclick="switchGroup('${cg.id}');switchTab('students')">学生管理</button><button class="btn sm" onclick="courseGroupModal('${cg.id}')">编辑</button><button class="btn sm danger" onclick="deleteCourseGroup('${cg.id}')">删除</button></div></div>`});html+=`</div>`}html+=`<div class="divider"></div><div class="hint"><strong>评分参数（高级）：</strong>考勤满分 ${state.settings.attendanceMax} · 期末折算系数 ${state.settings.finalRatio} · 总评封顶 ${state.settings.totalCap}。如需调整，请打开 HTML 文件，找到顶部 <code>DEFAULT_SETTINGS</code> 修改后重新保存。</div></div>`;main.innerHTML=html}
+
+function courseGroupModal(editId){const cg=editId?state.courseGroups.find(g=>g.id===editId):null;const title=cg?'编辑教学班':'新建教学班';showModal(`<h2>${title}</h2><form id="cg-form" onsubmit="submitCourseGroup(event,${cg?`'${cg.id}'`:'null'})"><div class="field"><label>课程名称 *</label><input name="course" required value="${cg?escapeHtml(cg.course):''}" placeholder="例如：中外舞蹈鉴赏"></div><div class="field"><label>教学班标签 *</label><input name="label" required value="${cg?escapeHtml(cg.label):''}" placeholder="例如：周一1-2节、1班、A班"></div><div class="field"><label>行政班（用逗号分隔，可多个）</label><input name="adminClasses" value="${cg?escapeHtml(cg.adminClasses.join(', ')):''}" placeholder="例如：舞蹈学2401, 表演2402"></div><div class="field"><label>应选人数（可空）</label><input name="capacity" type="number" min="0" value="${cg?cg.capacity||'':''}" placeholder="用于核对名单，留空不显示"></div><div class="field"><label>本学期总课次 *</label><input name="sessionsPerGroup" type="number" min="1" max="50" required value="${cg?cg.sessionsPerGroup:16}"></div><div style="display:flex;justify-content:flex-end;gap:6px;margin-top:16px"><button type="button" class="btn" onclick="hideModal()">取消</button><button type="submit" class="btn primary">${cg?'保存':'创建'}</button></div></form>`)}
+function submitCourseGroup(e,editId){e.preventDefault();const fd=new FormData(e.target);const data={course:fd.get('course'),label:fd.get('label'),adminClasses:fd.get('adminClasses')||'',capacity:fd.get('capacity'),sessionsPerGroup:fd.get('sessionsPerGroup')};const adminClasses=data.adminClasses.split(/[,，;；\s]+/).map(s=>s.trim()).filter(Boolean);if(editId){const cg=state.courseGroups.find(g=>g.id===editId);if(!cg)return;const newSpg=Math.max(1,Math.min(50,parseInt(data.sessionsPerGroup)||16));const g=state.groups[editId];if(g&&newSpg<g.sessions.length){const lost=g.sessions.length-newSpg;if(!confirm(`课次从 ${cg.sessionsPerGroup} 改为 ${newSpg}，将删除最后 ${lost} 次课的记录。是否继续？`))return}cg.course=data.course.trim();cg.label=data.label.trim();cg.adminClasses=adminClasses;cg.capacity=parseInt(data.capacity)||0;if(g){if(newSpg>g.sessions.length){for(let i=g.sessions.length;i<newSpg;i++)g.sessions.push({num:i+1,records:{},hasHomework:false})}else if(newSpg<g.sessions.length){g.sessions=g.sessions.slice(0,newSpg)}}cg.sessionsPerGroup=newSpg;saveState();hideModal();renderMain();toast('已保存')}else{const id='cg-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);const spg=Math.max(1,Math.min(50,parseInt(data.sessionsPerGroup)||16));state.courseGroups.push({id,course:data.course.trim(),label:data.label.trim(),adminClasses,capacity:parseInt(data.capacity)||0,sessionsPerGroup:spg});ensureGroupContainer(id,spg);if(!state.currentGroupId)state.currentGroupId=id;saveState();hideModal();renderMain();toast('教学班已创建')}}
+function deleteCourseGroup(id){const cg=state.courseGroups.find(g=>g.id===id);if(!cg)return;if(!confirm(`确定删除「${cg.course} · ${cg.label}」？\n所有学生、考勤、课堂、期末记录都会清除且不可恢复。`))return;if(!confirm(`再次确认：将永久删除这个教学班。\n建议先到【数据备份】导出 JSON 备份。`))return;state.courseGroups=state.courseGroups.filter(g=>g.id!==id);delete state.groups[id];if(state.currentGroupId===id)state.currentGroupId=state.courseGroups[0]?.id||null;saveState();renderMain();toast('教学班已删除')}
+
+// ====== 考勤登记 ======
+function renderAttendance(){const g=currentGroup();const meta=currentGroupMeta();const main=document.getElementById('main');if(!g.students.length){main.innerHTML=`<div class="panel"><div class="empty">还没有学生，请先到【学生管理】导入名单</div></div>`;return}let html=`<div class="panel"><div class="panel-header"><div><div class="panel-title">考勤登记 · ${escapeHtml(meta.course)} · ${escapeHtml(meta.label)}</div><div class="panel-subtitle">第 ${currentSession().num} 次课</div></div><div class="btn-group"><button class="btn" onclick="randomPick()">🎲 随机点名</button><button class="btn" onclick="markAllPresent()">全部到课</button></div></div>`;html+=`<div class="session-grid">${g.sessions.map((s,i)=>{const filled=Object.values(s.records).filter(r=>r.attendance).length;return`<button class="session-btn ${i===currentSessionIdx?'active':''}" onclick="selectSession(${i})"><div class="num">${s.num}</div><div class="sub">${filled}/${g.students.length}</div></button>`}).join('')}</div>`;html+=`<div class="chips">`;const stats={present:0,late:0,leave:0,absent:0,none:0};g.students.forEach(stu=>{const r=currentSession().records[stu.studentId];if(r&&r.attendance)stats[r.attendance]++;else stats.none++});html+=`<span class="chip">到课 ${stats.present}</span><span class="chip">迟到 ${stats.late}</span><span class="chip">请假 ${stats.leave}</span><span class="chip">旷课 ${stats.absent}</span><span class="chip">未登记 ${stats.none}</span></div>`;html+=`<div class="student-list">`;g.students.forEach((stu,idx)=>{const r=currentSession().records[stu.studentId]||{};const a=r.attendance||'';html+=`<div class="student-row"><div class="idx">${idx+1}</div><div class="info"><div class="name">${escapeHtml(stu.name)}</div><div class="sub">${escapeHtml(stu.studentId)} · ${escapeHtml(stu.adminClass)}</div></div><div class="actions"><button class="status-btn ${a==='present'?'active present':''}" onclick="setAttendance('${stu.studentId}','present')">到</button><button class="status-btn ${a==='late'?'active late':''}" onclick="setAttendance('${stu.studentId}','late')">迟</button><button class="status-btn ${a==='leave'?'active leave':''}" onclick="setAttendance('${stu.studentId}','leave')">假</button><button class="status-btn ${a==='absent'?'active absent':''}" onclick="setAttendance('${stu.studentId}','absent')">旷</button></div></div>`});html+=`</div></div>`;main.innerHTML=html}
+function selectSession(i){currentSessionIdx=i;saveState();renderMain()}
+function setAttendance(sid,val){const s=currentSession();if(!s.records[sid])s.records[sid]={};if(s.records[sid].attendance===val)delete s.records[sid].attendance;else s.records[sid].attendance=val;saveState();renderAttendance()}
+function markAllPresent(){if(!confirm('将本次课所有未登记的学生标记为到课？'))return;const g=currentGroup();const s=currentSession();g.students.forEach(stu=>{if(!s.records[stu.studentId])s.records[stu.studentId]={};if(!s.records[stu.studentId].attendance)s.records[stu.studentId].attendance='present'});saveState();renderAttendance()}
+function randomPick(){const g=currentGroup();if(!g.students.length)return;const stu=g.students[Math.floor(Math.random()*g.students.length)];let c=0;for(const s of g.sessions){const r=s.records[stu.studentId];if(r)c+=(r.answers||0)+(r.goodAnswers||0)}showModal(`<h2>抽到：${escapeHtml(stu.name)}</h2><p class="muted">${escapeHtml(stu.studentId)} · ${escapeHtml(stu.adminClass)}</p><p style="margin-top:8px" class="text-sm muted">本学期已回答 ${c} 次 · 完全随机抽取</p><div style="display:flex;justify-content:flex-end;gap:6px;margin-top:16px;flex-wrap:wrap"><button class="btn" onclick="hideModal()">关闭</button><button class="btn" onclick="randomPick()">再抽一次</button><button class="btn" onclick="quickAddAnswer('${stu.studentId}',1);hideModal()">回答+1</button><button class="btn primary" onclick="quickAddAnswer('${stu.studentId}',2);hideModal()">精彩回答+2</button></div>`)}
+function quickAddAnswer(sid,kind){addAnswer(sid,kind);toast('已记录')}
+
+// ====== 课堂记录 ======
+function renderRecord(){const g=currentGroup();const s=currentSession();const main=document.getElementById('main');if(!g.students.length){main.innerHTML=`<div class="panel"><div class="empty">还没有学生，请先到【学生管理】导入名单</div></div>`;return}const hasHw=!!s.hasHomework;let html=`<div class="panel"><div class="panel-header"><div><div class="panel-title">第 ${s.num} 次课 · 课堂记录</div><div class="panel-subtitle">回答 · 表现${hasHw?' · 作业':''}</div></div><div class="btn-group"><button class="btn ${hasHw?'gold':''}" onclick="toggleSessionHomework()">${hasHw?'☑ 本节有作业':'☐ 本节有作业'}</button></div></div>`;html+=`<div class="session-grid">${g.sessions.map((ss,i)=>`<button class="session-btn ${i===currentSessionIdx?'active':''}" onclick="selectSession(${i})"><div class="num">${ss.num}</div>${ss.hasHomework?'<div class="sub">📝 作业</div>':''}</button>`).join('')}</div>`;html+=`<div class="hint">【回答 +1】抢答加 1 分；【精彩回答 +2】回答精彩加 2 分；点错可用旁边的【↶】撤回。<br>表现三态切换：未设 → <strong>认真 +1</strong> → <strong>走神 -1</strong> → 未设。${hasHw?'<br><strong>本节有作业</strong>：未设 → 已交（不加分）→ 未交（-5）。':'<br>作业按钮仅在勾选「本节有作业」时显示并参与评分。'}</div><div class="student-list" style="margin-top:12px">`;g.students.forEach((stu,idx)=>{const r=s.records[stu.studentId]||{};const ans=r.answers||0,ga=r.goodAnswers||0;const hw=r.homework||'none';const perf=r.performance||'none';const hwLabel=hw==='submitted'?'已交 ✓':hw==='missing'?'未交 -5':'作业';const hwClass=hw==='submitted'?'active present':hw==='missing'?'active absent':'';let pLabel='表现',pClass='';if(perf==='focus'){pLabel='认真 +1';pClass='active present'}else if(perf==='distract'){pLabel='走神 -1';pClass='active absent'}const ansActive=ans>0?'active present':'';const gaActive=ga>0?'active present':'';html+=`<div class="student-row"><div class="idx">${idx+1}</div><div class="info"><div class="name">${escapeHtml(stu.name)}</div><div class="sub">${escapeHtml(stu.studentId)} · ${escapeHtml(stu.adminClass)}</div></div><div class="actions"><button class="status-btn ${ansActive}" onclick="addAnswer('${stu.studentId}',1)">回答 +1 (${ans})</button><button class="status-btn sm-undo" onclick="undoAnswer('${stu.studentId}',1)" title="撤回一次回答">↶</button><button class="status-btn ${gaActive}" onclick="addAnswer('${stu.studentId}',2)">精彩回答 +2 (${ga})</button><button class="status-btn sm-undo" onclick="undoAnswer('${stu.studentId}',2)" title="撤回一次精彩回答">↶</button>${hasHw?`<button class="status-btn ${hwClass}" onclick="toggleHomework('${stu.studentId}')">${hwLabel}</button>`:''}<button class="status-btn ${pClass}" onclick="togglePerformance('${stu.studentId}')">${pLabel}</button></div></div>`});html+=`</div></div>`;main.innerHTML=html}
+function addAnswer(sid,kind){const s=currentSession();if(!s.records[sid])s.records[sid]={};if(kind===1)s.records[sid].answers=(s.records[sid].answers||0)+1;else s.records[sid].goodAnswers=(s.records[sid].goodAnswers||0)+1;saveState();renderRecord()}
+function undoAnswer(sid,kind){const s=currentSession();if(!s.records[sid])return;if(kind===1){const v=(s.records[sid].answers||0)-1;if(v<=0)delete s.records[sid].answers;else s.records[sid].answers=v;toast('已撤回一次回答')}else{const v=(s.records[sid].goodAnswers||0)-1;if(v<=0)delete s.records[sid].goodAnswers;else s.records[sid].goodAnswers=v;toast('已撤回一次精彩回答')}saveState();renderRecord()}
+function toggleHomework(sid){const s=currentSession();if(!s.records[sid])s.records[sid]={};const cur=s.records[sid].homework||'none';const next=cur==='none'?'submitted':cur==='submitted'?'missing':'none';if(next==='none')delete s.records[sid].homework;else s.records[sid].homework=next;saveState();renderRecord()}
+function togglePerformance(sid){const s=currentSession();if(!s.records[sid])s.records[sid]={};const cur=s.records[sid].performance||'none';const next=cur==='none'?'focus':cur==='focus'?'distract':'none';if(next==='none')delete s.records[sid].performance;else s.records[sid].performance=next;saveState();renderRecord()}
+function toggleSessionHomework(){const s=currentSession();if(s.hasHomework){const hasData=Object.values(s.records).some(r=>r&&(r.homework==='submitted'||r.homework==='missing'));if(hasData&&!confirm('取消「本节有作业」后，本节已有的作业记录将不再计入评分（数据仍保留，重新勾选可恢复）。是否继续？'))return;s.hasHomework=false}else{s.hasHomework=true}saveState();renderRecord();toast(s.hasHomework?'已标记本节有作业':'已取消本节作业')}
+
+// ====== 期末成绩 ======
+function renderFinal(){const g=currentGroup();const meta=currentGroupMeta();const main=document.getElementById('main');if(!g.students.length){main.innerHTML=`<div class="panel"><div class="empty">还没有学生，请先到【学生管理】导入名单</div></div>`;return}const classes=['all',...meta.adminClasses];let html=`<div class="panel"><div class="panel-header"><div><div class="panel-title">期末成绩 · ${escapeHtml(meta.course)} · ${escapeHtml(meta.label)}</div><div class="panel-subtitle">录入原始分（0-100）和班级折算系数（默认 1.00，可按学院政策调整）</div></div><div class="btn-group"><button class="btn" onclick="bulkCoefModal()">按班设折算系数</button></div></div>`;html+=`<div class="chips">${classes.map(c=>`<button class="chip ${summaryFilterClass===c?'active':''}" onclick="setSummaryFilter('${c}')">${c==='all'?'全部':c}</button>`).join('')}</div>`;const filtered=g.students.filter(s=>summaryFilterClass==='all'||s.adminClass===summaryFilterClass);html+=`<div class="table-wrap"><table><thead><tr><th>#</th><th>学号</th><th>姓名</th><th>行政班</th><th>原始分</th><th>折算系数</th><th>折算后</th></tr></thead><tbody>`;filtered.forEach((s,i)=>{const f=g.finals[s.studentId]||{raw:'',coef:1};const adj=f.raw!==''&&f.raw!=null?Number(f.raw)*(f.coef??1):'';html+=`<tr><td class="muted">${i+1}</td><td>${escapeHtml(s.studentId)}</td><td>${escapeHtml(s.name)}</td><td><span class="tag">${escapeHtml(s.adminClass)}</span></td><td><input type="number" min="0" max="150" step="0.1" value="${f.raw??''}" onchange="setFinalRaw('${s.studentId}',this.value)" style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:4px"></td><td><input type="number" min="0" max="2" step="0.01" value="${f.coef??1}" onchange="setFinalCoef('${s.studentId}',this.value)" style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:4px"></td><td class="num">${adj===''?'—':Number(adj).toFixed(1)}</td></tr>`});html+=`</tbody></table></div></div>`;main.innerHTML=html}
+function setFinalRaw(sid,val){const g=currentGroup();if(!g.finals[sid])g.finals[sid]={raw:'',coef:1};g.finals[sid].raw=val===''?'':Number(val);saveState();renderFinal()}
+function setFinalCoef(sid,val){const g=currentGroup();if(!g.finals[sid])g.finals[sid]={raw:'',coef:1};g.finals[sid].coef=Number(val);saveState();renderFinal()}
+function bulkCoefModal(){const meta=currentGroupMeta();showModal(`<h2>按行政班设折算系数</h2><p class="muted text-sm">为同一行政班的所有学生批量设置折算系数（适合"按班赋分"政策）</p>${meta.adminClasses.map(c=>`<div class="field"><label>${escapeHtml(c)}</label><input type="number" min="0" max="2" step="0.01" value="1" id="coef-${c}"></div>`).join('')}<div style="display:flex;justify-content:flex-end;gap:6px;margin-top:16px"><button class="btn" onclick="hideModal()">取消</button><button class="btn primary" onclick="applyBulkCoef()">应用</button></div>`);window._bulkCoefClasses=meta.adminClasses}
+function applyBulkCoef(){const g=currentGroup();const cs=window._bulkCoefClasses||[];cs.forEach(c=>{const v=Number(document.getElementById('coef-'+c).value);g.students.filter(s=>s.adminClass===c).forEach(s=>{if(!g.finals[s.studentId])g.finals[s.studentId]={raw:'',coef:1};g.finals[s.studentId].coef=v})});saveState();hideModal();renderFinal();toast('折算系数已批量设置')}
+
+// ====== 总分汇总 ======
+function computeScores(gid,sid){const g=state.groups[gid];const st=state.settings;let attT=0,attC=0,ansS=0,hwS=0,pS=0;const ac={present:0,late:0,leave:0,absent:0,none:0};for(const s of g.sessions){const r=s.records[sid]||{};if(r.attendance){attT+=ATT_WEIGHTS[r.attendance];attC++;ac[r.attendance]++}else ac.none++;ansS+=(r.answers||0)*1+(r.goodAnswers||0)*2;if(s.hasHomework&&r.homework==='missing')hwS-=5;if(r.performance==='focus')pS+=1;else if(r.performance==='distract')pS-=1}const attR=attC>0?attT/attC:0;const attSc=attR*(st.attendanceMax??20);const f=g.finals[sid]||{};const fRaw=f.raw!==''&&f.raw!=null?Number(f.raw):null;const fAdj=fRaw!=null?fRaw*(f.coef??1):null;const fRatio=st.finalRatio??0.8;const finalScaled=fAdj!=null?fAdj*fRatio:null;const baseScore=finalScaled!=null?attSc+finalScaled:null;const bonusSum=ansS+hwS+pS;const cap=st.totalCap??100;const totalRaw=baseScore!=null?baseScore+bonusSum:null;const total=totalRaw!=null?Math.min(Math.max(totalRaw,0),cap):null;return{attCounts:ac,attRate:attR,attScore:attSc,answerScore:ansS,hwScore:hwS,perfScore:pS,bonusSum,finalRaw:fRaw,finalAdjusted:fAdj,finalScaled,baseScore,total}}
+function setSummaryFilter(c){summaryFilterClass=c;saveState();renderMain()}
+function renderSummary(){const g=currentGroup();const meta=currentGroupMeta();const main=document.getElementById('main');if(!g.students.length){main.innerHTML=`<div class="panel"><div class="empty">还没有学生</div></div>`;return}const classes=['all',...meta.adminClasses];const fr=state.settings.finalRatio??0.8;const cap=state.settings.totalCap??100;let html=`<div class="panel"><div class="panel-header"><div><div class="panel-title">总分汇总 · ${escapeHtml(meta.course)} · ${escapeHtml(meta.label)}</div><div class="panel-subtitle">基础分 = 考勤(20) + 期末×${fr}(80) ；加分项 = 答题 + 作业 + 表现 ；总评封顶 ${cap}</div></div><div class="btn-group"><button class="btn primary" onclick="exportExcel()">导出Excel</button></div></div>`;html+=`<div class="chips">${classes.map(c=>`<button class="chip ${summaryFilterClass===c?'active':''}" onclick="setSummaryFilter('${c}')">${c==='all'?'全部':c}</button>`).join('')}</div>`;const filtered=g.students.filter(s=>summaryFilterClass==='all'||s.adminClass===summaryFilterClass);const scores=filtered.map(s=>({s,sc:computeScores(state.currentGroupId,s.studentId)}));const totals=scores.filter(x=>x.sc.total!=null).map(x=>x.sc.total);const avg=totals.length?totals.reduce((a,b)=>a+b,0)/totals.length:0;const passed=totals.filter(t=>t>=60).length;const allP=scores.reduce((a,b)=>a+b.sc.attCounts.present,0);const allS=meta.sessionsPerGroup*filtered.length;const pr=allS>0?(allP/allS*100).toFixed(1):0;html+=`<div class="stats-grid"><div class="stat-card"><div class="stat-label">人数</div><div class="stat-value">${filtered.length}</div></div><div class="stat-card"><div class="stat-label">平均总分</div><div class="stat-value">${avg.toFixed(1)}</div></div><div class="stat-card"><div class="stat-label">及格人数</div><div class="stat-value">${passed}</div></div><div class="stat-card"><div class="stat-label">整体到课率</div><div class="stat-value">${pr}%</div></div></div><div class="chart-wrap"><canvas id="score-chart"></canvas></div><div class="divider"></div><div class="table-wrap"><table><thead><tr><th>#</th><th>学号</th><th>姓名</th><th>行政班</th><th>考勤<br>(20)</th><th>期末折算<br>(80)</th><th>答题</th><th>作业</th><th>表现</th><th>加分</th><th>总评</th><th></th></tr></thead><tbody>`;scores.forEach((x,i)=>{const sc=x.sc;const bd=sc.bonusSum>0?'+'+sc.bonusSum:String(sc.bonusSum);html+=`<tr><td class="muted">${i+1}</td><td>${escapeHtml(x.s.studentId)}</td><td>${escapeHtml(x.s.name)}</td><td><span class="tag">${escapeHtml(x.s.adminClass)}</span></td><td class="num">${sc.attScore.toFixed(1)}</td><td class="num">${sc.finalScaled!=null?sc.finalScaled.toFixed(1):'—'}</td><td class="num">${sc.answerScore}</td><td class="num">${sc.hwScore}</td><td class="num">${sc.perfScore}</td><td class="num">${bd}</td><td class="num"><strong>${sc.total!=null?sc.total.toFixed(1):'—'}</strong></td><td><button class="btn sm" onclick="showStudentDetail('${x.s.studentId}')">明细</button></td></tr>`});html+=`</tbody></table></div></div>`;main.innerHTML=html;renderScoreChart(scores)}
+function renderScoreChart(scores){const ctx=document.getElementById('score-chart');if(!ctx)return;if(chartInstance)chartInstance.destroy();const buckets=[0,0,0,0,0,0];const labels=['<60','60-69','70-79','80-89','90-99','100'];scores.forEach(x=>{const t=x.sc.total;if(t==null)return;if(t<60)buckets[0]++;else if(t<70)buckets[1]++;else if(t<80)buckets[2]++;else if(t<90)buckets[3]++;else if(t<100)buckets[4]++;else buckets[5]++});const bgColors=['#9B4646','#C68F2C','#B8923D','#5A7A4A','#4A6585','#1A2332'];chartInstance=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data:buckets,backgroundColor:bgColors,borderRadius:8,borderSkipped:false,maxBarThickness:64}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#1A2332',padding:10,titleFont:{size:12},bodyFont:{size:12},displayColors:false,cornerRadius:6}},scales:{y:{beginAtZero:true,ticks:{precision:0,color:'#6E665B',font:{size:11}},grid:{color:'rgba(227,223,212,0.6)'}},x:{ticks:{color:'#6E665B',font:{size:11,weight:'500'}},grid:{display:false}}}}})}
+function showStudentDetail(sid){const g=currentGroup();const stu=g.students.find(s=>s.studentId===sid);if(!stu)return;const sc=computeScores(state.currentGroupId,sid);const f=g.finals[sid]||{};let sessionsHtml='';g.sessions.forEach(s=>{const r=s.records[sid]||{};const parts=[];if(r.attendance)parts.push({present:'到',late:'迟',leave:'假',absent:'旷'}[r.attendance]);else parts.push('—');if(r.answers)parts.push('答×'+r.answers);if(r.goodAnswers)parts.push('精彩×'+r.goodAnswers);if(s.hasHomework&&r.homework==='submitted')parts.push('作业✓');if(s.hasHomework&&r.homework==='missing')parts.push('未交');if(r.performance==='focus')parts.push('认真');if(r.performance==='distract')parts.push('走神');sessionsHtml+=`<tr><td>第${s.num}次</td><td>${parts.join(' · ')}</td></tr>`});showModal(`<h2>${escapeHtml(stu.name)} <span class="muted text-sm">${escapeHtml(stu.studentId)} · ${escapeHtml(stu.adminClass)}</span></h2><div class="stats-grid" style="margin-top:12px"><div class="stat-card"><div class="stat-label">到课率</div><div class="stat-value">${(sc.attRate*100).toFixed(0)}%</div></div><div class="stat-card"><div class="stat-label">考勤分(20)</div><div class="stat-value">${sc.attScore.toFixed(1)}</div></div><div class="stat-card"><div class="stat-label">期末折算(80)</div><div class="stat-value">${sc.finalScaled!=null?sc.finalScaled.toFixed(1):'—'}</div></div><div class="stat-card"><div class="stat-label">加分小计</div><div class="stat-value">${sc.bonusSum>=0?'+':''}${sc.bonusSum}</div></div><div class="stat-card"><div class="stat-label">总评</div><div class="stat-value">${sc.total!=null?sc.total.toFixed(1):'—'}</div></div></div><div class="table-wrap" style="margin-top:10px"><table>${sessionsHtml}</table></div><div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn" onclick="hideModal()">关闭</button></div>`)}
+
+// ====== 学生管理 ======
+function renderStudents(){const g=currentGroup();const meta=currentGroupMeta();const main=document.getElementById('main');let html=`<div class="panel"><div class="panel-header"><div><div class="panel-title">学生名单 · ${escapeHtml(meta.course)} · ${escapeHtml(meta.label)}</div><div class="panel-subtitle">${meta.capacity?'应选 '+meta.capacity+' 人 · ':''}当前 ${g.students.length} 人<span id="stu-search-stats"></span></div></div><div class="btn-group"><button class="btn" onclick="downloadCsvTemplate()">下载模板</button><button class="btn" onclick="document.getElementById('roster-file').click()">导入名单</button><button class="btn primary" onclick="addStudentModal()">添加学生</button><input type="file" id="roster-file" style="display:none" accept=".csv,.xlsx,.xls" onchange="handleRosterImport(event)"></div></div>`;if(g.students.length)html+=`<div class="search-bar"><input id="stu-search" type="search" placeholder="🔍 搜索学号 / 姓名 / 行政班..." value="${escapeHtml(studentSearch)}" oninput="if(!this.dataset.composing)onStudentSearch(this.value)" oncompositionstart="this.dataset.composing='1'" oncompositionend="this.dataset.composing='';onStudentSearch(this.value)" autocomplete="off"><button id="stu-search-clear" class="btn sm" onclick="clearStudentSearch()" style="display:${studentSearch?'inline-flex':'none'}">清除</button></div><div class="bulk-actions"><span class="text-sm muted">批量删除：</span>${meta.adminClasses.map(c=>{const n=g.students.filter(s=>s.adminClass===c).length;return`<button class="btn sm danger" onclick="bulkDeleteByClass('${c}')" ${n===0?'disabled':''}>清空 ${escapeHtml(c)} (${n}人)</button>`}).join('')}<button class="btn sm danger" onclick="bulkDeleteAll()">清空当前教学班 (${g.students.length}人)</button></div>`;html+=`<div id="stu-list-region"></div></div>`;main.innerHTML=html;refreshStudentList()}
+function refreshStudentList(){const g=currentGroup();if(!g)return;const region=document.getElementById('stu-list-region');if(!region)return;const q=studentSearch.trim().toLowerCase();const filteredStu=q?g.students.filter(s=>(s.studentId||'').toLowerCase().includes(q)||(s.name||'').toLowerCase().includes(q)||(s.adminClass||'').toLowerCase().includes(q)):g.students;const stats=document.getElementById('stu-search-stats');if(stats)stats.textContent=q?' · 搜索匹配 '+filteredStu.length+' 人':'';const cb=document.getElementById('stu-search-clear');if(cb)cb.style.display=studentSearch?'inline-flex':'none';let html='';if(!g.students.length){html=`<div class="empty">还没有学生<br><span class="text-sm">点击"导入名单"上传 Excel/CSV，或"下载模板"获取格式</span></div>`}else if(!filteredStu.length){html=`<div class="empty">没有匹配「${escapeHtml(studentSearch)}」的学生<br><button class="btn sm" style="margin-top:12px" onclick="clearStudentSearch()">清除搜索</button></div>`}else{html=`<div class="table-wrap"><table><thead><tr><th>#</th><th>学号</th><th>姓名</th><th>行政班</th><th></th></tr></thead><tbody>`;filteredStu.forEach((s,i)=>{html+=`<tr><td class="muted">${i+1}</td><td>${escapeHtml(s.studentId)}</td><td>${escapeHtml(s.name)}</td><td><span class="tag">${escapeHtml(s.adminClass)}</span></td><td><div class="btn-group"><button class="btn sm primary" onclick="openStudentEditor('${s.studentId}')">查看/编辑</button><button class="btn sm danger" onclick="removeStudent('${s.studentId}')">删除</button></div></td></tr>`});html+=`</tbody></table></div>`}region.innerHTML=html}
+function onStudentSearch(v){studentSearch=v;refreshStudentList()}
+function clearStudentSearch(){studentSearch='';const si=document.getElementById('stu-search');if(si){si.value='';si.focus()}refreshStudentList()}
+function openStudentEditor(sid){const g=currentGroup();const meta=currentGroupMeta();const stu=g.students.find(s=>s.studentId===sid);if(!stu){hideModal();return}const sc=computeScores(state.currentGroupId,sid);const f=g.finals[sid]||{raw:'',coef:1};let rowsHtml='';g.sessions.forEach((s,i)=>{const r=s.records[sid]||{};const att=r.attendance||'';const ans=r.answers||0,ga=r.goodAnswers||0;const hw=r.homework||'';const perf=r.performance||'';rowsHtml+=`<tr><td><strong>第${s.num}次</strong>${s.hasHomework?' <span class="tag" style="background:var(--gold-soft);border-color:rgba(184,146,61,.3);color:var(--gold);margin-left:4px">作业</span>':''}</td><td><select class="mini-sel" onchange="editRec('${sid}',${i},'attendance',this.value)"><option value="">—</option><option value="present" ${att==='present'?'selected':''}>到课</option><option value="late" ${att==='late'?'selected':''}>迟到</option><option value="leave" ${att==='leave'?'selected':''}>请假</option><option value="absent" ${att==='absent'?'selected':''}>旷课</option></select></td><td><input type="number" min="0" step="1" value="${ans}" onchange="editRec('${sid}',${i},'answers',this.value)" class="mini-num"></td><td><input type="number" min="0" step="1" value="${ga}" onchange="editRec('${sid}',${i},'goodAnswers',this.value)" class="mini-num"></td><td>${s.hasHomework?`<select class="mini-sel" onchange="editRec('${sid}',${i},'homework',this.value)"><option value="">—</option><option value="submitted" ${hw==='submitted'?'selected':''}>已交</option><option value="missing" ${hw==='missing'?'selected':''}>未交 -5</option></select>`:'<span class="muted text-sm">—</span>'}</td><td><select class="mini-sel" onchange="editRec('${sid}',${i},'performance',this.value)"><option value="">—</option><option value="focus" ${perf==='focus'?'selected':''}>认真 +1</option><option value="distract" ${perf==='distract'?'selected':''}>走神 -1</option></select></td></tr>`});const adminClassOpts=meta.adminClasses.map(c=>`<option value="${escapeHtml(c)}" ${stu.adminClass===c?'selected':''}>${escapeHtml(c)}</option>`).join('');showModal(`<div class="edit-modal"><h2>编辑学生数据 <span class="muted text-sm" style="font-weight:400">${escapeHtml(stu.name)} · ${escapeHtml(stu.studentId)}</span></h2><div class="hint" style="margin-bottom:12px">改动即时保存，并同步到考勤、课堂、期末、汇总等所有页面。</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px"><div class="field" style="margin:0"><label>学号</label><input value="${escapeHtml(stu.studentId)}" onchange="editStuBasic('${sid}','studentId',this.value)"></div><div class="field" style="margin:0"><label>姓名</label><input value="${escapeHtml(stu.name)}" onchange="editStuBasic('${sid}','name',this.value)"></div><div class="field" style="margin:0"><label>行政班</label>${meta.adminClasses.length?`<select onchange="editStuBasic('${sid}','adminClass',this.value)">${adminClassOpts}<option value="__other__">其他…</option></select>`:`<input value="${escapeHtml(stu.adminClass)}" onchange="editStuBasic('${sid}','adminClass',this.value)">`}</div></div><div class="stats-grid" style="margin-bottom:14px"><div class="stat-card"><div class="stat-label">到课率</div><div class="stat-value">${(sc.attRate*100).toFixed(0)}%</div></div><div class="stat-card"><div class="stat-label">加分小计</div><div class="stat-value">${sc.bonusSum>=0?'+':''}${sc.bonusSum}</div></div><div class="stat-card"><div class="stat-label">总评</div><div class="stat-value">${sc.total!=null?sc.total.toFixed(1):'—'}</div></div></div><div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap"><div class="field" style="margin:0;flex:1;min-width:120px"><label>期末原始分</label><input type="number" min="0" max="150" step="0.1" value="${f.raw??''}" onchange="editFinal('${sid}','raw',this.value)"></div><div class="field" style="margin:0;flex:1;min-width:120px"><label>折算系数</label><input type="number" min="0" max="2" step="0.01" value="${f.coef??1}" onchange="editFinal('${sid}','coef',this.value)"></div></div><div class="table-wrap" style="max-height:46vh;overflow:auto"><table><thead><tr><th>课次</th><th>出勤</th><th>回答+1</th><th>精彩+2</th><th>作业</th><th>表现</th></tr></thead><tbody>${rowsHtml}</tbody></table></div><div style="display:flex;justify-content:flex-end;gap:6px;margin-top:14px"><button class="btn primary" onclick="hideModal();renderStudents()">完成</button></div></div>`)}
+function editRec(sid,idx,field,val){const g=currentGroup();const s=g.sessions[idx];if(!s)return;if(!s.records[sid])s.records[sid]={};const r=s.records[sid];if(field==='answers'||field==='goodAnswers'){const n=Math.max(0,parseInt(val)||0);if(n===0)delete r[field];else r[field]=n}else{if(!val)delete r[field];else r[field]=val}if(!Object.keys(r).length)delete s.records[sid];saveState();openStudentEditor(sid)}
+function editStuBasic(sid,field,val){const g=currentGroup();const stu=g.students.find(s=>s.studentId===sid);if(!stu)return;val=String(val||'').trim();if(field==='studentId'){if(!val){toast('学号不能为空');openStudentEditor(sid);return}if(val===sid)return;if(g.students.find(s=>s.studentId===val)){alert('学号 '+val+' 已存在');openStudentEditor(sid);return}stu.studentId=val;g.sessions.forEach(s=>{if(s.records[sid]){s.records[val]=s.records[sid];delete s.records[sid]}});if(g.finals[sid]){g.finals[val]=g.finals[sid];delete g.finals[sid]}saveState();openStudentEditor(val);return}if(field==='adminClass'&&val==='__other__'){val=prompt('输入行政班名称');if(!val){openStudentEditor(sid);return}val=val.trim()}stu[field]=val;saveState();openStudentEditor(sid)}
+function editFinal(sid,field,val){const g=currentGroup();if(!g.finals[sid])g.finals[sid]={raw:'',coef:1};if(field==='raw')g.finals[sid].raw=val===''?'':Number(val);else g.finals[sid].coef=Number(val);saveState();openStudentEditor(sid)}
+function addStudentModal(){const meta=currentGroupMeta();showModal(`<h2>添加学生</h2><form id="add-stu" onsubmit="submitAddStudent(event)"><div class="field"><label>学号 *</label><input name="studentId" required></div><div class="field"><label>姓名 *</label><input name="name" required></div><div class="field"><label>行政班 *</label>${meta.adminClasses.length?`<select name="adminClass" required>${meta.adminClasses.map(c=>`<option>${escapeHtml(c)}</option>`).join('')}<option value="__other__">其他…</option></select>`:`<input name="adminClass" required>`}</div><div style="display:flex;justify-content:flex-end;gap:6px;margin-top:14px"><button type="button" class="btn" onclick="hideModal()">取消</button><button type="submit" class="btn primary">添加</button></div></form>`)}
+function submitAddStudent(e){e.preventDefault();const fd=new FormData(e.target);let adminClass=fd.get('adminClass');if(adminClass==='__other__'){adminClass=prompt('输入行政班名称');if(!adminClass)return}const g=currentGroup();const sid=fd.get('studentId').trim();if(g.students.find(s=>s.studentId===sid)){alert('学号已存在');return}g.students.push({studentId:sid,name:fd.get('name').trim(),adminClass:adminClass.trim()});saveState();hideModal();renderStudents();toast('已添加')}
+function removeStudent(sid){if(!confirm('确定删除该学生？相关考勤、作业、期末记录都会清除。'))return;const g=currentGroup();g.students=g.students.filter(s=>s.studentId!==sid);g.sessions.forEach(s=>delete s.records[sid]);delete g.finals[sid];saveState();renderStudents();toast('已删除')}
+function bulkDeleteByClass(adminClass){const g=currentGroup();const targets=g.students.filter(s=>s.adminClass===adminClass);if(!targets.length)return;if(!confirm(`确定删除 ${adminClass} 的全部 ${targets.length} 名学生？\n相关考勤、答题、作业、表现、期末记录都会清除，且不可恢复。`))return;if(!confirm(`再次确认：将永久删除 ${adminClass} 的 ${targets.length} 人。\n建议提前到【数据备份】导出 JSON。`))return;const ids=new Set(targets.map(s=>s.studentId));g.students=g.students.filter(s=>!ids.has(s.studentId));g.sessions.forEach(sess=>{for(const id of ids)delete sess.records[id]});for(const id of ids)delete g.finals[id];saveState();renderMain();toast(`已删除 ${adminClass} 的 ${targets.length} 人`)}
+function bulkDeleteAll(){const g=currentGroup();const n=g.students.length;if(!n)return;if(!confirm(`确定删除当前教学班的全部 ${n} 名学生？\n所有记录都会清除，且不可恢复。`))return;if(!confirm(`再次确认：将永久删除 ${n} 人。\n建议提前到【数据备份】导出 JSON。`))return;g.students=[];g.sessions.forEach(s=>{s.records={}});g.finals={};saveState();renderMain();toast(`已清空全部 ${n} 人`)}
+function downloadCsvTemplate(){const csv='\ufeff学号,姓名,行政班\n20240101,张三,示例班级2401\n20240102,李四,示例班级2401\n';const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='学生名单模板.csv';a.click();URL.revokeObjectURL(a.href)}
+
+function handleRosterImport(ev){const file=ev.target.files[0];if(!file)return;const ext=file.name.split('.').pop().toLowerCase();const reader=new FileReader();reader.onload=e=>{try{let rows;if(ext==='csv'){let text;const buf=e.target.result;if(typeof buf==='string')text=buf;else{const dec=new TextDecoder('utf-8',{fatal:false});text=dec.decode(buf);if(text.charCodeAt(0)===0xFEFF)text=text.slice(1);const looksMojibake=/\uFFFD/.test(text)||(!/[一-龥]/.test(text)&&/[\x80-\xFF]/.test(new Uint8Array(buf).reduce((a,b)=>a+String.fromCharCode(b),'')));if(looksMojibake){try{text=new TextDecoder('gbk').decode(buf)}catch(_){try{text=new TextDecoder('gb18030').decode(buf)}catch(__){}}}}rows=parseCSV(text)}else{const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''})}importStudents(rows,file.name)}catch(err){showImportError(file.name,'读取文件失败：'+err.message)}finally{ev.target.value=''}};if(ext==='csv')reader.readAsArrayBuffer(file);else reader.readAsArrayBuffer(file)}
+function parseCSV(text){const rows=[];let cur=[],field='',inQ=false;for(let i=0;i<text.length;i++){const c=text[i];if(inQ){if(c==='"'&&text[i+1]==='"'){field+='"';i++}else if(c==='"')inQ=false;else field+=c}else{if(c==='"')inQ=true;else if(c===','){cur.push(field);field=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;cur.push(field);if(cur.some(x=>x!==''))rows.push(cur);cur=[];field=''}else field+=c}}if(field!==''||cur.length){cur.push(field);if(cur.some(x=>x!==''))rows.push(cur)}return rows}
+function importStudents(rows,filename){if(!rows||!rows.length){showImportError(filename,'文件是空的');return}const head=rows[0].map(x=>String(x||'').trim());const findCol=(...names)=>{for(let i=0;i<head.length;i++){const h=head[i].toLowerCase();for(const n of names){if(h===n||h.includes(n))return i}}return-1};const idCol=findCol('学号','studentid','student id','id','学籍号','sno');const nameCol=findCol('姓名','name','学生姓名','student name');const classCol=findCol('行政班','班级','class','行政班级','adminclass','admin class');if(idCol<0||nameCol<0){showImportError(filename,`未识别到必要的列。表头是：${head.join(' | ')}\n需要至少包含：学号、姓名。如有"行政班"列也会被读取，没有则使用教学班默认班级。`);return}const meta=currentGroupMeta();const defaultClass=meta.adminClasses[0]||'未分班';const g=currentGroup();const existing=new Set(g.students.map(s=>s.studentId));let added=0,skipped=0,duplicates=0;const skippedReasons=[];for(let i=1;i<rows.length;i++){const r=rows[i];if(!r||r.every(x=>!String(x||'').trim()))continue;const sid=String(r[idCol]||'').trim();const name=String(r[nameCol]||'').trim();const ac=classCol>=0?String(r[classCol]||'').trim():defaultClass;if(!sid||!name){skipped++;skippedReasons.push(`第${i+1}行：缺少学号或姓名`);continue}if(existing.has(sid)){duplicates++;continue}g.students.push({studentId:sid,name,adminClass:ac||defaultClass});existing.add(sid);added++}saveState();renderStudents();if(added===0){showImportError(filename,`导入 0 人，跳过 ${skipped+duplicates} 行\n${duplicates?`重复学号 ${duplicates} 条；`:''}${skippedReasons.length?'问题示例：\n  '+skippedReasons.slice(0,5).join('\n  '):''}`);return}toast(`已导入 ${added} 人${duplicates?`，跳过重复 ${duplicates} 条`:''}${skipped?`，跳过问题行 ${skipped} 条`:''}`)}
+function showImportError(filename,msg){showModal(`<h2>导入失败</h2><p class="muted text-sm">${escapeHtml(filename)}</p><pre style="white-space:pre-wrap;background:var(--bg);padding:10px;border-radius:6px;font-size:12px;margin-top:8px;border:1px solid var(--border)">${escapeHtml(msg)}</pre><div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn" onclick="hideModal()">关闭</button></div>`)}
+
+// ====== 数据备份 ======
+function renderBackup(){const main=document.getElementById('main');const size=new Blob([localStorage.getItem(STORAGE_KEY)||'']).size;const sizeStr=size>1024?(size/1024).toFixed(1)+' KB':size+' B';const last=state.lastBackup?new Date(state.lastBackup).toLocaleString('zh-CN'):'从未';const legacy=hasLegacyData();main.innerHTML=`<div class="panel"><div class="panel-header"><div><div class="panel-title">数据备份</div><div class="panel-subtitle">本地存储 · ${sizeStr} · 上次备份：${last}</div></div></div>${legacy?`<div class="legacy-banner"><div class="text">检测到本浏览器中保存有 <strong>上一版工具</strong> 的数据。两版备份格式互通，可一键迁移过来。</div><button class="btn gold" onclick="importLegacyFromBrowser()">↩ 从上一版导入</button></div>`:''}<div class="hint">所有数据存在浏览器 localStorage 里。建议<strong>每周导出一次 JSON 备份</strong>，学期末再导出一次 Excel 归档。换设备 / 清缓存前一定要备份！<br><br>本版本与<strong>上一版「考勤与成绩管理」</strong>的 JSON 备份<strong>完全互通</strong>——可在两个工具之间自由迁移数据。</div><div class="btn-group" style="margin-top:14px;gap:10px"><button class="btn primary" onclick="exportJSON()">📥 导出 JSON 备份</button><button class="btn" onclick="document.getElementById('json-import').click()">📤 导入 JSON 备份</button><input type="file" id="json-import" accept=".json" style="display:none" onchange="importJSON(event)"><button class="btn danger" onclick="clearAllData()">🗑️ 清空所有数据</button></div></div>`}
+function exportJSON(){const data=JSON.stringify(state,null,2);const blob=new Blob([data],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`考勤成绩备份_${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href);state.lastBackup=new Date().toISOString();saveState();toast('已导出备份');renderMain()}
+function normalizeSettings(s){if(!s)return{...DEFAULT_SETTINGS};return{attendanceMax:typeof s.attendanceMax==='number'?s.attendanceMax:20,finalRatio:typeof s.finalRatio==='number'?s.finalRatio:(typeof s.finalWeight==='number'?s.finalWeight:0.8),totalCap:typeof s.totalCap==='number'?s.totalCap:(typeof s.processCap==='number'?s.processCap:100)}}
+function importJSON(ev){const file=ev.target.files[0];if(!file)return;if(!confirm('导入会覆盖当前所有数据，是否继续？建议先导出当前数据。'))return;const reader=new FileReader();reader.onload=e=>{try{const data=JSON.parse(e.target.result);if(!data.courseGroups||!Array.isArray(data.courseGroups))throw new Error('文件格式不对');state={...state,...data,settings:normalizeSettings(data.settings)};migrateHasHomework();saveState();renderMain();toast('已导入 '+data.courseGroups.length+' 个教学班')}catch(err){alert('导入失败：'+err.message)}};reader.readAsText(file);ev.target.value=''}
+function hasLegacyData(){try{const raw=localStorage.getItem(LEGACY_STORAGE_KEY);if(!raw)return false;const d=JSON.parse(raw);return d&&Array.isArray(d.courseGroups)&&d.courseGroups.length>0}catch(_){return false}}
+function importLegacyFromBrowser(){const raw=localStorage.getItem(LEGACY_STORAGE_KEY);if(!raw){toast('未检测到上一版数据');return}if(!confirm('将导入上一版「考勤与成绩管理」在本浏览器里保存的数据。\n这会覆盖当前所有数据，是否继续？'))return;try{const data=JSON.parse(raw);if(!data.courseGroups||!Array.isArray(data.courseGroups))throw new Error('上一版数据为空或不可读');state={...state,...data,settings:normalizeSettings(data.settings)};migrateHasHomework();saveState();renderMain();toast('已从上一版导入 '+data.courseGroups.length+' 个教学班')}catch(err){alert('导入失败：'+err.message)}}
+function clearAllData(){if(!confirm('确定要清空所有数据吗？这不可恢复！'))return;if(!confirm('再次确认：所有教学班、学生、考勤、成绩都会删除。'))return;localStorage.removeItem(STORAGE_KEY);location.reload()}
+
+// ====== Excel 导出 ======
+function exportExcel(){const g=currentGroup();const meta=currentGroupMeta();const wb=XLSX.utils.book_new();const classes=meta.adminClasses.length?meta.adminClasses:['全部'];classes.forEach(cls=>{const stus=g.students.filter(s=>meta.adminClasses.length?s.adminClass===cls:true);const rows=[];rows.push(['学号','姓名','行政班','到课','迟到','请假','旷课','到课率','回答(+1)','精彩回答(+2)','作业课次','已交','未交','认真','走神','考勤分(20)','期末原始','折算系数','期末折算(80)','答题分','作业分','表现分','加分小计','总评']);let hwSessions=0;for(const ss of g.sessions)if(ss.hasHomework)hwSessions++;stus.forEach(stu=>{const sc=computeScores(state.currentGroupId,stu.studentId);let an=0,ag=0,hp=0,hm=0,pc=0,pd=0;for(const s of g.sessions){const r=s.records[stu.studentId]||{};an+=r.answers||0;ag+=r.goodAnswers||0;if(s.hasHomework){if(r.homework==='submitted')hp++;if(r.homework==='missing')hm++}if(r.performance==='focus')pc++;if(r.performance==='distract')pd++}const f=g.finals[stu.studentId]||{};rows.push([stu.studentId,stu.name,stu.adminClass,sc.attCounts.present,sc.attCounts.late,sc.attCounts.leave,sc.attCounts.absent,(sc.attRate*100).toFixed(1)+'%',an,ag,hwSessions,hp,hm,pc,pd,+sc.attScore.toFixed(2),f.raw??'',f.coef??'',sc.finalScaled!=null?+sc.finalScaled.toFixed(2):'',sc.answerScore,sc.hwScore,sc.perfScore,sc.bonusSum,sc.total!=null?+sc.total.toFixed(2):''])});const ws=XLSX.utils.aoa_to_sheet(rows);XLSX.utils.book_append_sheet(wb,ws,cls.slice(0,30))});XLSX.writeFile(wb,`${meta.course}_${meta.label}_${new Date().toISOString().slice(0,10)}.xlsx`);toast('Excel 已导出')}
+
+// ====== 帮助函数 ======
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]))}
+function showModal(html){const root=document.getElementById('modal-root');root.innerHTML=`<div class="modal-bg" onclick="if(event.target===this)hideModal()"><div class="modal">${html}</div></div>`}
+function hideModal(){document.getElementById('modal-root').innerHTML=''}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>el.classList.remove('show'),2000)}
+
+// ====== 启动 ======
+loadState();renderMain();if(hasLegacyData()&&!state.courseGroups.length)setTimeout(()=>toast('检测到上一版数据，可在【数据备份】或【课程设置】一键迁移'),600);
+// ============ OneDrive 同步插件 · 自动云同步 ============
+(function () {
+	const CLIENT_ID = '77c9e8ae-aac5-4935-9db3-c3ad01925c57';
+	const REDIRECT_URI = 'https://kaoqin-tool.vercel.app';
+	const SCOPES = ['Files.ReadWrite.AppFolder'];
+	const GRAPH = 'https://graph.microsoft.com/v1.0';
+	const FILE_PATH = '/me/drive/special/approot:/kaoqin-data.json:/content';
+	const STORAGE_KEY = 'attendance_grading_general_v1';
+
+	let msalApp = null;
+	let account = null;
+	let pushTimer = null;
+	let status = 'init';
+	let lastSyncAt = null;
+
+	function renderBar () {
+		let bar = document.getElementById('cloudBar');
+		if (!bar) {
+			bar = document.createElement('div');
+			bar.id = 'cloudBar';
+			bar.style.cssText = 'position:sticky;top:0;z-index:9999;background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:8px 14px;display:flex;align-items:center;gap:10px;font:13px/1.4 system-ui,-apple-system,sans-serif;color:#1e3a8a';
+			document.body.insertBefore(bar, document.body.firstChild);
+		}
+		const labelMap = {
+			init: '初始化中…',
+			anon: '☁️ 未登录 OneDrive（数据仅本地保存）',
+			pulling: '☁️ 正在从云端拉取…',
+			pushing: '☁️ 正在上传到云端…',
+			synced: '✅ 已同步' + (lastSyncAt ? '（' + lastSyncAt + '）' : ''),
+			pending: '⏳ 有改动，2 秒后自动同步…',
+			offlineErr: '⚠️ 同步失败（已保存到本地，恢复网络后自动重试）',
+			authErr: '⚠️ 登录失效，请重新登录'
+		};
+		const label = labelMap[status] || status;
+		const loggedIn = !!account;
+		const who = loggedIn ? (account.username || account.name || '') : '';
+		bar.innerHTML =
+			'<span style="flex:1">' + label + (who ? ' · ' + who : '') + '</span>' +
+			(loggedIn
+				? '<button id="cbtnPush" style="padding:4px 10px;border:1px solid #93c5fd;background:#fff;border-radius:6px;cursor:pointer">立即同步</button>' +
+				  '<button id="cbtnPull" style="padding:4px 10px;border:1px solid #93c5fd;background:#fff;border-radius:6px;cursor:pointer">从云端覆盖</button>' +
+				  '<button id="cbtnOut" style="padding:4px 10px;border:1px solid #fca5a5;background:#fff;color:#b91c1c;border-radius:6px;cursor:pointer">退出</button>'
+				: '<button id="cbtnIn" style="padding:4px 12px;border:0;background:#2563eb;color:#fff;border-radius:6px;cursor:pointer">登录 OneDrive</button>');
+		const bin = document.getElementById('cbtnIn');
+		if (bin) bin.onclick = login;
+		const bps = document.getElementById('cbtnPush');
+		if (bps) bps.onclick = function () { pushNow(); };
+		const bpl = document.getElementById('cbtnPull');
+		if (bpl) bpl.onclick = function () { if (confirm('确定用云端数据覆盖本地吗？本地未同步的改动会丢失。')) forcePull(); };
+		const bout = document.getElementById('cbtnOut');
+		if (bout) bout.onclick = logout;
+	}
+
+	async function init () {
+		if (!window.msal) {
+			let tries = 0;
+			while (!window.msal && tries < 20) { await new Promise(function (r) { setTimeout(r, 200); }); tries++; }
+		}
+		if (!window.msal) { status = 'authErr'; renderBar(); console.warn('MSAL 加载失败'); return; }
+
+		msalApp = new window.msal.PublicClientApplication({
+			auth: { clientId: CLIENT_ID, authority: 'https://login.microsoftonline.com/common', redirectUri: REDIRECT_URI },
+			cache: { cacheLocation: 'localStorage' }
+		});
+		await msalApp.initialize();
+
+		try { await msalApp.handleRedirectPromise(); } catch (e) { console.warn(e); }
+
+		const accs = msalApp.getAllAccounts();
+		if (accs && accs.length) account = accs[0];
+
+		renderBar();
+
+		if (account) {
+			hookLocalStorage();
+			await pull(true);
+		} else {
+			status = 'anon';
+			renderBar();
+		}
+	}
+
+	async function login () {
+		try {
+			const r = await msalApp.loginPopup({ scopes: SCOPES, prompt: 'select_account' });
+			account = r.account;
+			renderBar();
+			hookLocalStorage();
+			await pull(true);
+		} catch (e) {
+			alert('登录失败：' + (e && e.message ? e.message : e));
+		}
+	}
+
+	async function logout () {
+		try { await msalApp.logoutPopup({ account: account }); } catch (e) {}
+		account = null;
+		status = 'anon';
+		renderBar();
+	}
+
+	async function getToken () {
+		if (!msalApp || !account) return null;
+		try {
+			const r = await msalApp.acquireTokenSilent({ scopes: SCOPES, account: account });
+			return r.accessToken;
+		} catch (e) {
+			try {
+				const r = await msalApp.acquireTokenPopup({ scopes: SCOPES });
+				return r.accessToken;
+			} catch (e2) {
+				return null;
+			}
+		}
+	}
+
+	async function pull (initial) {
+		if (!account) return;
+		status = 'pulling';
+		renderBar();
+		const token = await getToken();
+		if (!token) { status = 'authErr'; renderBar(); return; }
+		let resp;
+		try {
+			resp = await fetch(GRAPH + FILE_PATH, { headers: { Authorization: 'Bearer ' + token } });
+		} catch (e) {
+			status = 'offlineErr'; renderBar(); return;
+		}
+		if (resp.status === 404) {
+			const localRaw = localStorage.getItem(STORAGE_KEY);
+			if (localRaw) { await push(); }
+			else { status = 'synced'; lastSyncAt = new Date().toLocaleTimeString(); renderBar(); }
+			return;
+		}
+		if (!resp.ok) { status = 'offlineErr'; renderBar(); return; }
+		const remoteText = await resp.text();
+		const localRaw = localStorage.getItem(STORAGE_KEY);
+
+		if (!localRaw) {
+			localStorage.setItem(STORAGE_KEY, remoteText);
+			status = 'synced'; lastSyncAt = new Date().toLocaleTimeString(); renderBar();
+			reloadApp();
+			return;
+		}
+
+		let local = null, remote = null;
+		try { local = JSON.parse(localRaw); } catch (e) {}
+		try { remote = JSON.parse(remoteText); } catch (e) {}
+		const lt = local && local.lastSaved ? new Date(local.lastSaved).getTime() : 0;
+		const rt = remote && remote.lastSaved ? new Date(remote.lastSaved).getTime() : 0;
+
+		if (rt > lt + 1000) {
+			const msg = '☁️ 检测到云端有更新的数据：\n\n' +
+				'本地最后保存：' + (lt ? new Date(lt).toLocaleString() : '未知') + '\n' +
+				'云端最后保存：' + new Date(rt).toLocaleString() + '\n\n' +
+				'点「确定」用云端覆盖本地（推荐换设备时这样做）\n' +
+				'点「取消」保留本地数据（下次保存会推送本地版本到云端）';
+			if (initial && confirm(msg)) {
+				localStorage.setItem(STORAGE_KEY, remoteText);
+				status = 'synced'; lastSyncAt = new Date().toLocaleTimeString(); renderBar();
+				reloadApp();
+				return;
+			}
+		} else if (lt > rt + 1000) {
+			await push();
+			return;
+		}
+		status = 'synced'; lastSyncAt = new Date().toLocaleTimeString(); renderBar();
+	}
+
+	async function forcePull () {
+		if (!account) return;
+		status = 'pulling'; renderBar();
+		const token = await getToken();
+		if (!token) { status = 'authErr'; renderBar(); return; }
+		let resp;
+		try { resp = await fetch(GRAPH + FILE_PATH, { headers: { Authorization: 'Bearer ' + token } }); }
+		catch (e) { status = 'offlineErr'; renderBar(); return; }
+		if (resp.status === 404) { alert('云端还没有数据'); status = 'synced'; renderBar(); return; }
+		if (!resp.ok) { status = 'offlineErr'; renderBar(); return; }
+		const t = await resp.text();
+		localStorage.setItem(STORAGE_KEY, t);
+		status = 'synced'; lastSyncAt = new Date().toLocaleTimeString(); renderBar();
+		reloadApp();
+	}
+
+	async function push () {
+		if (!account) return;
+		let raw = localStorage.getItem(STORAGE_KEY);
+		if (!raw) { status = 'synced'; renderBar(); return; }
+		status = 'pushing'; renderBar();
+		try {
+			const obj = JSON.parse(raw);
+			obj.lastSaved = new Date().toISOString();
+			raw = JSON.stringify(obj);
+			origSetItem.call(localStorage, STORAGE_KEY, raw);
+		} catch (e) {}
+		const token = await getToken();
+		if (!token) { status = 'authErr'; renderBar(); return; }
+		let resp;
+		try {
+			resp = await fetch(GRAPH + FILE_PATH, {
+				method: 'PUT',
+				headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+				body: raw
+			});
+		} catch (e) { status = 'offlineErr'; renderBar(); return; }
+		if (resp.ok) {
+			status = 'synced'; lastSyncAt = new Date().toLocaleTimeString(); renderBar();
+		} else {
+			status = 'offlineErr'; renderBar();
+		}
+	}
+
+	function pushNow () {
+		if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
+		push();
+	}
+
+	function schedulePush () {
+		if (!account) return;
+		status = 'pending'; renderBar();
+		if (pushTimer) clearTimeout(pushTimer);
+		pushTimer = setTimeout(function () { pushTimer = null; push(); }, 2500);
+	}
+
+	const origSetItem = Storage.prototype.setItem;
+	let hooked = false;
+	function hookLocalStorage () {
+		if (hooked) return;
+		hooked = true;
+		Storage.prototype.setItem = function (k, v) {
+			origSetItem.apply(this, arguments);
+			if (k === STORAGE_KEY && account && status !== 'pushing' && status !== 'pulling') schedulePush();
+		};
+	}
+
+	function reloadApp () {
+		if (typeof window.loadState === 'function' && typeof window.renderMain === 'function') {
+			try { window.loadState(); window.renderMain(); return; } catch (e) {}
+		}
+		location.reload();
+	}
+
+	window.cloudLogin = login;
+	window.cloudLogout = logout;
+	window.cloudPushNow = pushNow;
+	window.cloudPullNow = forcePull;
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', init);
+	} else {
+		init();
+	}
+})();
+// ============ 同步插件结束 ============
+</script>
+</body>
+</html>
